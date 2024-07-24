@@ -320,3 +320,255 @@ void edit_document(std::string const& filename) {
 매개변수가 있는 일반함수 대신 멤버 데이터가 있는 함수 개체를 사용하는 등 다른 매커니즘을 사용할 수 있지만, 스레드 라이브러리를 사용하면 쉽게 작업할 수 있다.
 
 ## 2.2: 스레드 함수에 인자 전달하기
+[Listening 2.4]에서처럼, `std::thread`의 생성자에 호출가능한 객체 또는 함수를 인자로 주는 것은 간단하다.
+그러나 함수의 매개변수가 참조를 기대하는 경우에도 인자는 기본적으로 내부 저장소로 복사되며, 새로 생성된 실행 스레드에서 액세스할 수 있다.
+다음은 간단한 예시이다:
+
+```cpp
+void f(int i, std::string const &s);
+std::thread t(f, 3, "hello");
+```
+
+이는 스레드 객체인 t와 연관된 새로운 스레드를 만들어서 `f(3, “hello”)`를 실행시킨다.
+`f`가 `std::string`을 두 번째 매개변수로로 받음을 주목하다. 문자열 리터럴은 `char const*`로 전달되고, 새로운 스레드에서만 `std::string`으로 변환된다.
+매개변수가 다음과 같이 자동 변수에 대한 포인터로 제공될 때, 이는 특히 중요하다.
+
+```cpp
+void f(int i, std::string const &s);
+
+void oops(int some_param) {
+    char buffer[1024];
+    sprinf(buffer, "%i", some_param);
+    std::thread t(f, 3, buffer);
+    t.detach();
+}
+```
+
+이 경우에서, 로컬변수 `buffer`에 대한 포인터는 새로운 스레드로 전달된다.
+그리고 함수 `oops`는 버퍼가 새로운 스레드에 std::string으로 변환하는 동안 종료할 특정 기회가 생긴다.
+이는 정의되지 않은 행동으로 옮겨진다.
+솔루션은, `std::thread` 생성자에 전달하기 전에 `std::string`으로 변환해서 주는 것이다.
+
+```cpp
+void f(int i, std::string const &s);
+
+void not_oops(int some_param) {
+    char buffer[1024];
+    sprinf(buffer, "%i", some_param);
+    std::thread t(f, 3, std::string(buffer));
+    t.detach();
+}
+```
+
+이러한 경우에서, `std::thread` 생성자가 예상되는 인수 유형으로 변환하지 않고 제공된 값을 그대로 복사하기 떄문에, 버퍼에 대한 포인터를 함수 매개변수로 예상되는 std::string객체로 암묵적으로 변환하고 있다는 게 문제이다.
+
+시나리오를 거꾸로 갈 수도 있다.
+객체가 복사되고, 참조를 원하는 경우이다.
+만약 스레드가 참조받은 자료 구조를 업데이트 하려 할 때이다.
+예를 들어서, 
+
+```cpp
+void update_data_for_widget(widget_id w, widget_data &data);
+
+void oops_again(widget_id w) {
+    widget_data data;
+    std::thread t(update_data_for_widget, w, data);
+    display_status();
+    t.join();
+    process_widget_data(data);
+}
+```
+
+비록 `update_data_for_widget`이 참조를 예상하지만, `std::thread`의 생성자는 알 수 없다.
+함수에서 예상되는 인자의 유형을 무시하고 제공된 값을 맹목적으로 복사한다.
+`update_data_for_widget`이 실행될 때, 데이터 자체에 대한 참조가 아닌, 복사본에 대한 참조를 전달하게 된다.
+
+결론적으로, 스레드가 종료될 때, 업데이트 값은 사라질 것이다.
+그리고 `process_widget_data` 역시 업데이트 된 데이터가 아닌, 변경되지 않은 데이터를 받을 것이다.
+`std::bind`에 친숙하다면, 해결할 수 있겠다. 참조 정보인 이 인자를 std::ref로 감싸서 전달해야 한다.
+그리고 `update_data_for_widget`은 복사본이 아닌 실제 참조를 받을 것이다.
+
+만약 `std::bind`에 익숙하다면, 이러한 인자 전달은 별로 놀랍지 않을 것이다.
+`std::thread`의 생성자와 `std::bind`의 연산은 거의 비슷한 매커니즘이기 때문이다.
+이 의미는, 예를 들어서, 첫 번째 인수로 적합한 객체 포인터를 제공하는 경우 함수로 멤버 함수 포인터를 전달할 수 있음을 의미한다.
+
+```cpp
+class X {
+public:
+    void do_lengthy_work();
+};
+
+X my_x;
+std::thread t(&X::do_lengthy_work, &my_x);
+```
+
+이 코드는 `my_x.do_lengthy_work()`를 새로운 스레드에서 실행시킨다. `my_x`의 주소가 객체 포인터로 제공되었기 때문이다.
+이러한 멤버 함수 호출에 인자를 제공할 수도 있다. std::thread 생성자에 대한 세 번째 인수가 멤버 함수에 대한 첫 번째 인자가 될 것이다.
+인자를 제공하는 다른 흥미로운 시나리오는 인자를 복사할 수 없고 이동만 가능한 경우이다.
+한 객체 내에서 보유된 데이터가 다른 객체로 전달되어 원래 객체는 “empty”상태로 남는다.
+그러한 종류의 예시는 자동으로 메모리를 동적으로 관리하는 객체인 `std::unique_ptr`이다.
+
+하나의 `std::unique_ptr` 인스턴스만이 주어진 객체를 가리킬 수 있고, 인스턴스가 소멸될 때, 가리키는 개체도 제거된다.
+`move` 생성자와 `move` 할당 연산은 객체의 소유권을 `std::unique_ptr` 인스턴스들 사이에 제공한다.
+이러한 전송은 기존 객체에 `Null` 포인터를 남긴다.
+
+값을 이동하면 이러한 유형의 객체를 함수 매개변수로 받아들이거나 함수에서 반환할 수 있다.
+기존 객체가 임시인 경우, 이동이 자동이지만 소스가 이름 있는 값인 경우, `std::move()`를 호출하여 직접 전송을 요청해야 한다.
+아래 예시는 `std::move`를 사용하여 동적 객체의 소유권을 스레드로 전송하는 방법을 보여준다.
+
+```cpp
+void process_big_object(std::unique_ptr<big_object>);
+
+std::unique_ptr<big_object> p(new big_object);
+p->prepare_data(42);
+std::thread t(process_big_object, std::move(p));
+```
+
+`std::move(p)`를 `std::thread` 생성자에 특정함으로써, `big_object`의 소유권은 생성된 스레드를 위한 새로 생성된 내부 스토리지, 그리고 `process_big_object`에 넘겨진다.
+STL에 있는 클래스들의 일부는 같은 소유권을 가지는데, 예컨데 `std::unique`와 `std::thread`가 그러한 종류이다.
+`std::thread` 인스턴스는 `std::unique_ptr`와 같은 방식으로 동적 객체를 소유하지는 않지만, 리소스를 소유한다.
+
+각 인스턴스는 실행 스레드를 관리하는 역할을 한다. 이 소유권은 복사할 수 없지만, `std::thread` 인스턴스가 이동할 수 있기 때문에, 인스턴스 간에 이전이 가능하다.
+이는 한 번에 하나의 객체만 특정 실행 스레드와 연결되도록 하는 동시에 프로그래머가 객체 간에 소유권을 이동시키는 옵션을 허용한다.
+
+## 2.3: 스레드의 소유권 이동하기
+
+백그라운드에서 실행할 스레드를 생성하지만 새 스레드의 소유권을, 
+완료를 기다리는 대신에 호출 함수에 다시 전달하는 함수를 쓰거나, 
+스레드를 생성하여 완료를 기다리는 함수에 소유권을 반대로 전달하는 경우가 있다.
+
+양쪽 모두, 당신은 소유권을 넘겨야 한다.
+`std::thread`에서 `move`가 역할을 한다.
+이전 세션에서 다루었듯이, C++ STL의 많은 리소스-소유 타입(`std::ifstream`, `std::unique_ptr`과 같은)은 이동이 가능하나, 복사가 불가능하다.
+`std::thread`도 그중 하나이다.
+즉, 특정 스레드의 실행에 대한 소유권은 `std::thread` 인스턴스간에 이동이 가능하다.
+
+아래의 예시에서, 실행되는 두 스레드의 생성과 소유권의 교환을 볼 수 있다.
+
+```cpp
+void some_function();
+void some_other_function();
+std::thread t1(some_function); // t1 -> some_function.
+std::thread t2 = std::move(t1); // t1 -> NULL, t2 -> some_function
+t1 = std::thread(some_other_function); // t1 -> some_other_function, t2 -> some_function
+
+std::thread t3;
+t3 = std::move(t2); // t1 -> some_other_function, t2 -> NULL, t3 -> some_function
+t1 = std::move(t3); // t1 -> some_function, t2 -> NULL, t3 -> NULL, but, std::terminate(). 
+```
+
+처음에, 스레드가 생성되어 `t1`에 종속된다.
+그러고, `t2`객체로 소유권이 넘어간다. 이제, `t1`은 아무 스레드와 연관이 없다. 
+`some_function`은 `t2`와 연관되어있다.
+그러고, 새로운 스레드가 시작되어서 `t1`에 종속된다. 여기서는 따로 `move`가 필요하지 않다.
+
+`t3`을 생성하였다. 아무 연관된 스레드가 없는 채로 생성되었다.
+그 뒤, `t2`의 스레드가 `t3`에게 넘어갔다. 여기서는 `move`를 사용하였는데, `t2`에 종속된 스레드였기 때문이다.
+이제, `t1`은 `some_other_functon`을 실행중이고, `t2`는 아무 스레드와 연관되지 않고, `t3`은 `some_function`을 실행한다.
+
+맨 아래는 `some_function`은 다시 `t1`에게 돌려주려는 상황이다. 그러나 t1은 이미 소유중인 스레드가 있기 때문에, `std::terminate()`가 실행되면서 프로그램이 종료된다.
+`std::thread` 소멸자와 함께 실행된다.
+섹션 2.1.1에서 보았듯, 당신은 소멸 전에 스레드를 기다리거나, 분리해주어야 한다.
+그냥 스레드에 새 값을 할당하면서 버릴 수는 없다.
+`move`의 `std::thread`를 지원의 의미는 소유권의 이동이 함수를 통해서 가능함을 말한다. 
+
+아래의 예시를 보자.
+
+```cpp
+// Listening 2.5
+// Returning a std::thread from a function
+
+std::thread f() {
+    void some_function();
+    return std::thread(some_function);
+}
+
+std::thread g() {
+    void some_other_function(int);
+    std::thread t(some_other_function, 42);
+    return t;
+}
+```
+
+마찬가지로, 만약 소유권이 함수를 통해서 이동되어야 한다면, 아래처럼 `std::thread` 인스턴스를 파라미터로 받으면 된다.
+
+```cpp
+void f(std::thread t);
+void g() {
+    void some_function();
+    f(std::thread(some_function));
+    std::thread t(some_function);
+    f(std::move(t));
+}
+```
+
+`std::thread`에 대한 `move`의 지원을 통한 한 이점은 당신이 thread_guard 클래스를 [Listening 2.3] 처럼 만들어서 소유권을 변경할 수 있는 것이다.
+
+이는 `thread_guard` 객체가 참조하던 스레드보다 오래 지속될 경우의 불쾌한 결과를 방지하고, 소유권이 개체로 이전되면 다른 사람이 스레드에 `join`하거나 `detach`할 수 없음을 의미한다.
+이는 주로 범위가 끝나기 전에 스레드가 완료되도록 보장하는 것을 목표로 해서, 이 클래스를 `scope_thread`라고 할 것이다. 
+
+아래는 예시이다.
+
+```cpp
+// Listening 2.6
+// scoped_thread and example usage
+
+class scoped_thread {
+    std::thread t;
+public:
+    explicit scoped_thread(std::thread t_):
+        t(std::move(t_))
+        {
+            if(!t.joinable)
+                throw std::logic_error("No thread");
+        }
+        ~scoped_thread() {
+            t.join();
+        }
+        scoped_thread(scoped_thread const &) = delete;
+        scoped_thread &operator=(scoped_thread const &) = delete;
+};
+
+struct func; //Listening 2.1 참고
+
+void f() {
+    int some_local_state;
+    scoped_thread t(std::thread(func(some_local_state)));
+
+    do_something_in_currnet_thread();
+}
+```
+
+이 예시는 2.3의 예시와 비슷하지만, 새로운 스레드는 즉시 `scoped_thread`로 전달된다.
+최초의 스레드가 함수의 끝, 즉 `do_something_in_currnet_thread()`에 도달하면, scoped_thread 객체는 소멸되고 생성자에 제공한 스레드를 `join`한다.
+
+[Listening 2.3]의 `thread_guard`의 소멸자는 `thread`가 `joinable`한지 확인하지만, 여기서는 당신은 생성자에서 `joinable()`한지 확인하고, 아니라면, 예외처리를 한다.
+
+`std::thread`의 `move`의 지원은 `std::thread` 객체에 대한 컨테이너를 지원한다.
+이는 다음 예시에서 다음과 같은 방법으로 코드를 작성할 수 있음을 의미하며, 이는 수많은 스레드를 생성한 다음 스레드가 완료될 때까지 기다린다.
+```cpp
+// Listening 2.7
+// Spawn some threads and wait for them to finish
+
+void do_work(unsigned id);
+void f() {
+    std::vector<std::thread> threads;
+    for (unsigned i = 0; i < 20; ++i) {
+        threads.push_back(std::thread(do_work, i));
+    }
+    std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
+}
+```
+
+만약 스레드들이 알고리즘의 작업을 세분화하는 데 사용될 경우, 이런 경우가 종종 필요할 수 있으며, 리턴하기 전에 모든 스레드가 완료되어야 한다.
+물론 2.7을 나열하는 간단한 구조는 스레드가 수행한 작업이 자체적으로 포함되며, 이들의 작업 결과는 순전히 공유 데이터에 대한 부작용임을 의미한다. 
+
+`f()`가 이러한 스레드가 수행한 작업의 결과에 따라 달라지는 값을 반환하려면, 이 반환 값은 스레드가 종료된 후 공유 데이터를 조사하여 결정해야 한다.
+스레드 간의 결과를 전송하는 다른 방식은 챕터 4에서 볼 수 있다.
+
+`std::thread` 객체를 `std::vector`에 넣는 것은 스레드들의 관리를 자동화하는 단계이다. 
+별도의 변수 생성이 아닌, 그룹화가 가능하다. 
+
+이 단계를 한 단계 더 진행하려면, [Listening 2.7]과 같이 고정된 개수가 아닌, 동적으로 결정되는 수를 해보면 되겠다.
+
+## 2.4: 런타임에서 스레드의 개수 정하기
