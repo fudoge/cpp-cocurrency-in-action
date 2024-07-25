@@ -109,7 +109,7 @@ std::thread my_thread([] {
 아래의 예시는 그러한 시나리오이다.
 
 ```cpp
-// Listening 2.1: 
+// Listing 2.1: 
 // A function that returns while a thread still has access to local variables
 
 #include <thread>
@@ -144,7 +144,7 @@ void oops() {
 이러한 시나리오를 다루는 한 일반적인 방법은 스레드 함수에서 데이터를 참조하는 것이 아닌, 데이터의 복사본을 가지고 있는 것이 좋다.
 스레드 함수에 호출 가능한 객체를 사용한다면, 그 객체는 스레드에 복사된다. 기존 객체는 즉시 없어질 수 있다.
 그러나 당신은 여전히 객체가 포인터 또는 참조를 가지는 것에 대해 주의하여야 한다.
-[Listening 2.1]이 그런 경우이다.
+[Listing 2.1]이 그런 경우이다.
 
 특히, 함수에서 어떠한 로컬변수에 참조하는 것은 좋지 않다. 스레드가 그 스레드를 호출시킨 함수가 끝나기 전에  종료되는것이 보장되어도 말이다.
 대안으로, 당신은 `join`을 통해 기존 함수가 스레드의 호출을 기다려주도록 할 수 있다.
@@ -152,7 +152,7 @@ void oops() {
 ### 2.1.2: 스레드가 완료되기까지 기다리기
 
 만약 당신이 스레드를 기다리고 싶다면, `std::thread` 인스턴스에 연관된 `join()`을 통해서 가능하다.
-[Listening 2.1]에서 `my_theread.detach()`를 `my_thread.join()`으로 대체하면, 함수가 끝나기 전에 생성된 스레드를 기다렸다가 끝낸다.
+[Listing 2.1]에서 `my_theread.detach()`를 `my_thread.join()`으로 대체하면, 함수가 끝나기 전에 생성된 스레드를 기다렸다가 끝낸다.
 이 경우, 스레드를 분리하여 함수를 실행하는 것에는 거의 의미가 없다.
 최초의 스레드는 하는 일이 없기 때문이다.
 
@@ -181,10 +181,10 @@ void oops() {
 아래 코드는 간단한 예제이다.
 
 ```cpp
-// Listening 2.2
+// Listing 2.2
 // Waiting for a thread to finish
 
-struct func; // Listening 2.1을 참고하세요.
+struct func; // Listing 2.1을 참고하세요.
 
 void f() {
     int some_local_state = 0;
@@ -211,7 +211,7 @@ void f() {
 함수 `f()`가 어떻게 간소화되었는지 보자.
 
 ```cpp
-// Listening 2.3: 
+// Listing 2.3: 
 // Using RAII to wait for a thread to complete
 
 class thread_guard {
@@ -230,7 +230,7 @@ explicit thread_guard(std::thread& t_): // 생성자 선언
     thread_guard& operator = (thread_guard const&) = delete;
 };
 
-struct func; // Listening 2.1 참고
+struct func; // Listing 2.1 참고
 
 void f() {
     int some_local_state = 0;
@@ -291,10 +291,10 @@ UI계층과 내부 양 측에서, 다루는 방법은 다양한다.
 내부적으로 이를 다루는 한 방법은 각 문서 편집 창에 하나의 스레드를 가지는 것이다. 각 스레드는 같은 코드를 가지지만, 창의 특성에 따라서 편집되는 각자 다른 데이터를 가진다.
 새로운 문서를 여는 것은 새로운 스레드를 켜는 것을 말한다. 요청을 처리하는 스레드는 다른 스레드가 끝나는 것을 기다릴 필요가 없다. 관련이 없는 문서이기 때문이다. 그러므로, 분리된 스레드를 실행하는 새로운 후보를 만들어준다.
 
-아래의 Listening은 예제를 보여준다.
+아래의 Listing은 예제를 보여준다.
 
 ```cpp
-// Listening 2.4: 
+// Listing 2.4: 
 // Detaching a thread to handle other documents
 
 void edit_document(std::string const& filename) {
@@ -320,7 +320,7 @@ void edit_document(std::string const& filename) {
 매개변수가 있는 일반함수 대신 멤버 데이터가 있는 함수 개체를 사용하는 등 다른 매커니즘을 사용할 수 있지만, 스레드 라이브러리를 사용하면 쉽게 작업할 수 있다.
 
 ## 2.2: 스레드 함수에 인자 전달하기
-[Listening 2.4]에서처럼, `std::thread`의 생성자에 호출가능한 객체 또는 함수를 인자로 주는 것은 간단하다.
+[Listing 2.4]에서처럼, `std::thread`의 생성자에 호출가능한 객체 또는 함수를 인자로 주는 것은 간단하다.
 그러나 함수의 매개변수가 참조를 기대하는 경우에도 인자는 기본적으로 내부 저장소로 복사되며, 새로 생성된 실행 스레드에서 액세스할 수 있다.
 다음은 간단한 예시이다:
 
@@ -475,7 +475,7 @@ t1 = std::move(t3); // t1 -> some_function, t2 -> NULL, t3 -> NULL, but, std::te
 아래의 예시를 보자.
 
 ```cpp
-// Listening 2.5
+// Listing 2.5
 // Returning a std::thread from a function
 
 std::thread f() {
@@ -502,7 +502,7 @@ void g() {
 }
 ```
 
-`std::thread`에 대한 `move`의 지원을 통한 한 이점은 당신이 thread_guard 클래스를 [Listening 2.3] 처럼 만들어서 소유권을 변경할 수 있는 것이다.
+`std::thread`에 대한 `move`의 지원을 통한 한 이점은 당신이 thread_guard 클래스를 [Listing 2.3] 처럼 만들어서 소유권을 변경할 수 있는 것이다.
 
 이는 `thread_guard` 객체가 참조하던 스레드보다 오래 지속될 경우의 불쾌한 결과를 방지하고, 소유권이 개체로 이전되면 다른 사람이 스레드에 `join`하거나 `detach`할 수 없음을 의미한다.
 이는 주로 범위가 끝나기 전에 스레드가 완료되도록 보장하는 것을 목표로 해서, 이 클래스를 `scope_thread`라고 할 것이다. 
@@ -510,7 +510,7 @@ void g() {
 아래는 예시이다.
 
 ```cpp
-// Listening 2.6
+// Listing 2.6
 // scoped_thread and example usage
 
 class scoped_thread {
@@ -529,7 +529,7 @@ public:
         scoped_thread &operator=(scoped_thread const &) = delete;
 };
 
-struct func; //Listening 2.1 참고
+struct func; //Listing 2.1 참고
 
 void f() {
     int some_local_state;
@@ -542,12 +542,12 @@ void f() {
 이 예시는 2.3의 예시와 비슷하지만, 새로운 스레드는 즉시 `scoped_thread`로 전달된다.
 최초의 스레드가 함수의 끝, 즉 `do_something_in_currnet_thread()`에 도달하면, scoped_thread 객체는 소멸되고 생성자에 제공한 스레드를 `join`한다.
 
-[Listening 2.3]의 `thread_guard`의 소멸자는 `thread`가 `joinable`한지 확인하지만, 여기서는 당신은 생성자에서 `joinable()`한지 확인하고, 아니라면, 예외처리를 한다.
+[Listing 2.3]의 `thread_guard`의 소멸자는 `thread`가 `joinable`한지 확인하지만, 여기서는 당신은 생성자에서 `joinable()`한지 확인하고, 아니라면, 예외처리를 한다.
 
 `std::thread`의 `move`의 지원은 `std::thread` 객체에 대한 컨테이너를 지원한다.
 이는 다음 예시에서 다음과 같은 방법으로 코드를 작성할 수 있음을 의미하며, 이는 수많은 스레드를 생성한 다음 스레드가 완료될 때까지 기다린다.
 ```cpp
-// Listening 2.7
+// Listing 2.7
 // Spawn some threads and wait for them to finish
 
 void do_work(unsigned id);
@@ -569,6 +569,176 @@ void f() {
 `std::thread` 객체를 `std::vector`에 넣는 것은 스레드들의 관리를 자동화하는 단계이다. 
 별도의 변수 생성이 아닌, 그룹화가 가능하다. 
 
-이 단계를 한 단계 더 진행하려면, [Listening 2.7]과 같이 고정된 개수가 아닌, 동적으로 결정되는 수를 해보면 되겠다.
+이 단계를 한 단계 더 진행하려면, [Listing 2.7]과 같이 고정된 개수가 아닌, 동적으로 결정되는 수를 해보면 되겠다.
 
 ## 2.4: 런타임에서 스레드의 개수 정하기
+C++ STL에서 도움을 주는 한 기능은 `std::thread::hardware_concurrency()`이다.
+이 함수는 프로그램에서 실제로 동시에 실행 가능한 스레드의 개수를 반환한다.
+예를 들어서, 멀티코어 시스템에서 CPU코어의 개수가 될 것이다.
+정보를 받아올 수 없다면, 0을 반환한다.
+
+그러나 스레드들에게 작업들을 나눠주기 좋은 가이드이다.
+[Listing 2.8]에서는 `std::accumulate`의 병렬 버전의 간단한 구현을 보여준다.
+너무 많은 스레드들로 인해 오버헤드 되지 않는 선에서 스레드 당 최소 작업량을 할당하여 작업을 분할한다.
+여기서는 예외가 가능하더라도 어떤 연산도 예외를 던지지 않는다고 가정한다.
+
+예를 들면, `std::thread`의 생성자는 새로운 스레드의 실행이 불가능할 때 예외를 던진다.
+이러한 알고리즘에서의 예외처리는 챕터 8에서 다룰 것이다.
+
+```cpp
+// Listing 2.8
+// A naive parallel version of std::accumulate
+
+template<typename Iterator, typename T>
+struct accumulate_block {
+    void operator()(Iterator first, Iterator last, T& result) {
+        result = std::accumulate(first, last, result);
+    }
+};
+
+template<typename Iterator, typename T>
+T parallel_accumulate(Iterator first, Iterator last, T init) {
+    unsigned long const length = std::distance(first, last);
+
+    if(!length)
+        return init;
+
+    unsigned long const min_per_thread = 25;
+    unsigned long const max_threads = (length + min_per_thread - 1) / min_per_thread;
+
+    unsigned long const hardware_thread = std::thread::hardware_concurrency();
+
+    unsigned long const num_threads = std::min(hardware_thread != 0 ? hardware_threads : 2, max_threads);
+
+    unsigned long const block_size = legnth / num_threads;
+
+    std::vector<T> results(num_threads);
+    std::vector<std::thread> threads(num_threads - 1);
+
+    Iterator block_start = first;
+    for (unsigned long i = 0; i < (num_threads - 1); ++i) {
+        Iterator block_end = block_start;
+        std::advance(block_end, block_size);
+        threads[i] = std::thread(accumulate_block<Iterator, T>(),
+                                 block_start, block_end::ref(results[i]));
+        block_start = block_end;
+    }
+    accumulate_block<Iterator, T>()(block_start, last, results[num_threads - 1]);
+
+    std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
+
+    return std::accumulate(results.begin(), results.end(), init);
+}
+```
+
+![Untitled](./listing2-7_result.png)
+(실제 결과. 아래 8은 `std::thread::hardware_concurrency()를` 출력해본 결과이다.)
+
+비록 긴 함수이지만, 순차적으로 읽어볼 수 있다.
+만약 입력 범위가 비어있으면, `init`으로 반환하면 된다.
+비어있지 않다면, 범위에 적어도 하나의 요소가 있으므로, 처리할 요소의 수를 최소 블록 크기로 나누어 최대 스레드 수를 정할 수 있다.
+범위에 5개 값이 있으면, 32코어 컴퓨터에 32개 스레드가 사용되지 않도록 하기 위해서이다.
+
+스레드의 개수는 하드웨어 스레드 수와 계산한 최대 스레드 수의 최소값이다.
+당신은 하드웨어의 수보다 스레드를 많이 만드는 것을 원하지 않을 것이다.
+`context switching`은 오히려 성능저하를 불러일으킬 수 있기 때문이다.
+`std::thread::hardware_concurrency()`가 0으로 반환되면, 그냥 임의의 값으로 지정하면 되는데, 작성자는 여기에서 2를 선택했다.
+당신은 하드웨어가 지원되는 것보다 더 많은 스레드의 실행을 원하지 않을 것이다.
+싱글코어 시스템에서 작업속도가 느려질 수 있기 때문이다.
+그러나 너무 적은 스레드를 실행하고 싶지도 않을 것이다. 사용가능한 동시성 자원을 놔두고 있는거니까.
+
+각 스레드에 대한 엔트리의 수는 스레드에 의해 나눠진 범위의 길이이다.
+나눗셈이 딱 떨어지지 않는 경우에 대한 우려가 된다면, 걱정하지 말라. 나중에 처리할 수 있다.
+
+이제, 당신은 몇 개의 스레드를 가지고 있는지 알 수 있다.
+`std::vector<T>`로 결과를 담을 배열을 만들 수 있고,
+`std::vector<std::thread>>`를 통해서 스레드 배열을 만들 수 있다.
+`num_threads`보다는 1 작은개수로 만들어야 한다. 이미 메인스레드가 하나 있으니말이다.
+
+스레드들을 실행하는 것은 그저 간단한 반복문이다.
+`block_end` 반복자를 현재 블록에 대한 끝으로 하고 새로 스레드를 실행시켜서 결과를 누적하는 것이다.
+다음 블록의 시작은 이 블록의 끝 이후 이루어진다.
+모든 스레드를 실행시키고, 이 스레드는 최종 블록을 실행한다. 
+여기서 딱 나누어지지 않은 경우를 고려해야 한다. 마지막 블록의 끝이 끝이라는 것을 알고 있고, 그 블록의 개수는 중요하지 않다.
+
+마지막 블록의 결과를 누적했을 때,  `std::for_each`를 통해서 다른 스레드들을 기다릴 수 있고, `std::accumulate`를 통해서 값을 누적할 수 있다.
+
+이 예시를 떠나기 전에, 타입 `T`의 덧셈 연산자가 float나 double의 경우와 같은 경우, `parallel_accmulate`의 결과는 `std::accumulate`에서는 조금 다르게 나올 수 있다는 것을 기억하라.
+또한, 반복자의 요구사항이 더 엄격해진다. 적어도 순방향이어야 하지만, `std::accumulate`는 단일 패스 입력에서도 동작가능하다.
+그리고, T는 결과 벡터를 생성할 수 있게 기본적으로 구성가능해야 한다.
+이러한 류의 차별화된 요구사항들은 병렬 알고리즘에서 흔히 볼 수 있다.
+병렬화하기 위해 방식이 달라질 수 있고, 이는 결과와 요구사항에 영향을 미친다.
+병렬 알고리즘은 챕터 8에서 더 깊게 다뤄질 것이다.
+
+또한 스레드에서 직접 값을 반환할 수 없으므로, 결과 벡터에 참조하며 전달해야 한다.
+스레드에서 결과를 반환하는 다른 방법은 4장에서 `future`를 사용하는 것을 볼 수 있다.
+이 경우에서는, 각 스레드에 요구된 정보들이 스레드가 시작될 때 주어졌고, 계산 결과를 반환할 공간을 포함해서 주었다.
+때로는 처리의 일부를 위해어떤 방식으로든 스레드를 식별할 수 있어야 한다.
+[listing 2.7]처럼 값 `i`를 넘겨줄 수 있겠지만, 만약 식별자가 필요한 함수가 호출 스택의 몇 단계 깊이에 있고 어떤 스레드에서도 호출할 수 있다면, 몇 단계씩이나 넘겨야 하는 불편함이 있다.
+
+우리가 C++ 스레드 라이브러리를 디자인할 때, 우리는 스레드에 고유의 식별자가 필요함을 알게되어 스레드가 고유 식별자를 갖게 만들었다.
+
+## 2.5: 스레드 식별하기
+
+스레드 식별자는 `std::thread::id`의 타입이고, 두 가지 방법으로 얻을 수 있다.
+
+1. 스레드의 식별자는 `std::thread`객체와 연관된 함수 `get_id()`를 호출해서 얻을 수 있다.
+`std::thread`객체가 실행 중인 스레드와 연결되어있지 않다면, `get_id()`의 호출은 “아무 스레드도 아님”을 뜻하는 `std::thread::id` 타입의 기본값을 반환한다.
+
+2. 또는, 현재 스레드의 식별자는 `std::this_thread::get_id()`를 호출하여 얻을 수 있으며, `<thread>`헤더에 정의되어 있다.
+
+`std::thread::id`의 타입은 복사되고 비교가능하다. 반면 그들은 식별자로써 잘 쓰이지는 않는다.
+만약 두 객체가 같지 않다면, 다른 스레드를 가질 것이고, 아니면 하나는 스레드를 가지고 아니면 다른 하나는 아무 스레드를 가지고 있지 않는 경우일 것이다.
+`Thread` 라이브러리는 `std::thread`의 스레드 식별자가 같은지 아닌지만 비교시키지 않는다.
+`std::thread::id` 유형의 객체는 모든 고유 값에 대한 전체 순서를 제공하는 완전한 비교 연산자 집합을 제공한다.
+이는 연관 컨테이너의 키로 쓰거나 정렬하거나 프로그래머가 할 수 있는 다른 방식으로 비교할 수 있도록 허용한다.
+비교 연산자는 독립적인 값의 `std::thread::id`에 대해 제공하므로, a<b, b<c, a<c등의 동작을 당신의 직관대로 수행할 수 있다.
+
+STL은 `std::hash<std::thread::id>`를 지원하여 `std::thread::id`의 종류는 다른 순서가 없는 연관 컨테이너에 대한 key가 될 수 있다.
+`std::thread::id`의 인스턴스들은 스레드가 특정한 연산을 수행하도록 검사할 때 쓰이기도 한다.
+
+예를 들어서, 만약 스레드들이 [listing2.8]에서처럼 작업을 나눠서 할 때 다른 스레드를 시작한 초기 스레드는 알고리즘 중간에 작업을 약간 다르게 수행해야 할 수도 있다.
+이러한 경우에서는 `std::this_thread::get_id()`의 결과를 다른 스레드의 실행 때 저장할 수 있고, 알고리즘의 중요 부분에서(모든 스레드가 수행하는), 저장된 값과 스레드 Id를 비교할 수도 있다.
+
+```cpp
+std::thread::id master_thread;
+void some_core_part_of_algoritm() {
+    if(std::this_thread::get_id() == master_thread) {
+        do_master_thread_work();
+    }
+    do_common_work();
+}
+```
+
+또는, 현재 스레드의 `std::thread::id`는 작업의 일부로 자료 구조에 저장될 수 있다.
+이후 동일한 데이터 구조에 대한 작업은 저장된 ID를 작업을 수행하는 스레드의 ID와 비교하여 확인해서 작업을 허용하거나 요구함을 결정할 수 있다.
+비슷하게, 스레드ID는 특정 데이터가 스레드와 연관되어있고 스레드의 로컬스토리지 저장과 같은 대안이 적절하지 않은 연관된 컨테이너 키로 쓰일 수 있다.
+
+예를 들어, 이러한 컨테이너는 제어 스레드에 의해 그 제어 하에 있는 각각의 스레드에 대한 정보를 저장하거나 스레드 간에 정보를 전달하는 데 사용될 수 있다.
+대부분의 상황에서 `std::thread::id`는 스레드의 일반 식별자로 충분하다.
+이는 식별자가 스레드와 연관된 의미를 가진 경우에만(배열의 인덱스 등)일 때만 대안이 필요하다.
+
+`std::thread::id`의 인스턴스를 `std::cout`과 같은 출력 스트림에 쓸 수도 있다.
+
+```cpp
+std::cout << std::this_thread::get_id();
+```
+
+당신이 얻는 정확한 결과는 엄격이 구현 의존적이다.
+표준에서 보장하는 유일한 것은 같은 것으로 비교되는 스레드ID는 동일한 출력을 가지고, 동일하지 않으면 다른 출력을 생성해야 한다는 것이다.
+즉, 디버깅과 로깅에 유용하지만, 값은 의미가 그리 있지는 않다.
+
+## 2.6: 요약
+
+C++ STL에서 스레드를 제어하는 기초를 보였다.
+스레드를 시작하고, 
+끝나기를 기다리고, 
+기다리지 않고 백그라운드에서 실행하고, 
+스레드가 실행할 함수에 인자를 전달하고, 
+스레드의 소유권을 넘기고,
+여러 스레드를 나누어 동작시키는 법을 알았다.
+마지막으로, 데이터나 행동을 다른 수단을 통해 연관짓기 불편한 특정 스레드와 연관시키기 위해 스레드를 식별하는 방법에 대해 논의했다.
+
+[Listing 2.8]에서처럼, 각각 다른 데이터에서 동작하는 독립적인 스레드를 사용하면 꽤 많은 일을 할 수 있지만, 실행 중인 스레드 간에 데이터를 공유하는 것이 때로는 바람직하다.
+3장에서는 스레드 간에 데이터를 직접 공유하는 것과 관련된 문제를 논의할 것이고,
+4장에서는 공유 데이터를 사용하거나 사용하지 않는 동기화 작업과 관련된 일반적인 문제들을 다룰 것이다.
